@@ -93,16 +93,9 @@ resp_CO2 <- c("daily_CO2", "daily_CO2_plastic", "daily_CO2_native", "priming")
 
 ### Soil data
 #data <- read_excel("Raw-data/Enzyme data for avi MP incubation soils.xlsx", sheet='final enzyme data')
-dat_soil <- read.csv("Processed-data/All Wet Chemistry Data_final.csv")
+dat_soil <- read.csv("Processed-data/dat_soil.csv")
 unique(dat_soil$Jar.No) # Jars 1-160
 dat_soil$day <- as.integer(gsub(x=dat_soil$Time, pattern="D", replacement=""))
-dat_soil$cacq <- dat_soil$BG + dat_soil$CB + dat_soil$XYL
-
-# assign replicate values
-dat_soil$Rep <- rep(NA, dim(dat_soil)[1])
-for(i in 1:dim(dat_soil)[1]){
-  dat_soil$Rep[i] <- rs$Replicate[which(rs$`Jar No`==dat_soil$Jar.No[i])]
-}
 
 # factors
 dat_soil <- dat_soil %>%
@@ -110,7 +103,6 @@ dat_soil <- dat_soil %>%
   mutate(Nitrogen = factor(Nitrogen,levels = c("N0", "N1")))%>%
   mutate(Rep = factor(Rep))
 
-write.csv(dat_soil, "Processed-data/dat_soil.csv")
 
 # subset data by nitrogen treatment and day
 dat_soil_5 <- subset(dat_soil, day==5)
@@ -164,6 +156,7 @@ library(ggcorrplot)
 library(psych)
 #install.packages("ggfortify")
 library(ggfortify)
+library(rstatix)
 
 
 '%!in%' <- function(x,y)!('%in%'(x,y))
@@ -189,6 +182,13 @@ days <- c("Day 5", "Day 15", "Day 30", "Day 193")
 #                    c=c(1,0,1,0), d=c(0,0,0,0))
 
 
+
+font_1 <- 18
+
+
+
+######## PCA for each harvest point separately
+
 for(i in 1:4){
   dat_mod <- dat[[i]]
   dat_mod <- dat_mod[-which(dat_mod$Plastic=="NONE"),] 
@@ -204,6 +204,11 @@ for(i in 1:4){
   # correlation plot
   corr <- round(cor(dat_mod[,c(new_names)]), 2)
   p.mat <- cor_pmat(dat_mod[,c(new_names)])  
+  row.names(p.mat) <- p.mat$rowname
+  p.mat <- p.mat %>% select(-rowname)
+  p.mat <- as.data.frame(p.mat)
+  rownames(p.mat) <- colnames(p.mat)
+  
   pl <- ggcorrplot(corr, show.diag = F, p.mat = p.mat,lab=T, type="lower", insig="blank", lab_size = 2, lab_col="white") +
     theme_minimal()+
     labs(x="", y="", title=paste0(lets[i], ") ", days[i])) +
@@ -250,31 +255,38 @@ for(i in 1:4){
   
   # Plot
   g <- ggplot(PCAvalues, aes(x = PC1, y = PC2, colour = Plastic)) +
+    geom_point(size = 4, aes(shape=Nitrogen)) +
     geom_segment(data = PCAloadings, aes(x = 0, y = 0, xend = (PC1*5),
                                          yend = (PC2*5)), arrow = arrow(length = unit(1/2, "picas")),
                  color = "black") +
-    geom_point(size = 3, aes(shape=Nitrogen)) +
     # for labels on the positive x side
     annotate("text", x = (PCAloadings$PC1[which(PCAloadings$PC1>0)]*5)*1.1, 
              y = (PCAloadings$PC2[which(PCAloadings$PC1>0)]*5)*1.1, 
              #angle=(PCAloadings$PC1[which(PCAloadings$PC1>0)] + PCAloadings$PC2[which(PCAloadings$PC1>0)])*50, 
              hjust=0,
-             label = rownames(PCAloadings)[which(PCAloadings$PC1>0)], size=3) +
+             label = rownames(PCAloadings)[which(PCAloadings$PC1>0)], size=4) +
     # for labels on the negative x side
-    annotate("text", x = (PCAloadings$PC1[which(PCAloadings$PC1<0)]*5)*1.1, 
-             y = (PCAloadings$PC2[which(PCAloadings$PC1<0)]*5)*1.1, 
+    annotate("text", x = (PCAloadings$PC1[which(PCAloadings$PC1<0)]*5)*1.01, 
+             y = (PCAloadings$PC2[which(PCAloadings$PC1<0)]*5)*1.01, 
              #angle=(PCAloadings$PC1[which(PCAloadings$PC1<0)] + PCAloadings$PC2[which(PCAloadings$PC1<0)])*30, 
              hjust=1,
-             label = rownames(PCAloadings)[which(PCAloadings$PC1<0)], size=3) +
+             label = rownames(PCAloadings)[which(PCAloadings$PC1<0)], size=4) +
     scale_color_manual(values=colplas25) +
     scale_shape_manual(values=c(21, 19)) +
-    theme_bw() + theme(legend.position="bottom") + 
+    theme_bw() +
     labs(title=paste0(lets[i], ") ", days[i]))  +
     guides(color = guide_legend(nrow = 2), shape = guide_legend(nrow = 2)) +
     labs(x=paste0("PC1 (", round(PCAaxes[2,1]*100, 1), "%)"), 
-         y=paste0("PC2 (", round(PCAaxes[2,2]*100, 1), "%)"))
+         y=paste0("PC2 (", round(PCAaxes[2,2]*100, 1), "%)")) +
+    xlim(c(-3,5)) + ylim(c(-3,5)) +
+    theme(legend.position="bottom",title = element_text(size=font_1, family = "Arial"),
+          axis.text.x = element_text(size=font_1, family = "Arial"), axis.text.y = element_text(size=font_1, family = "Arial"), 
+          axis.title.x = element_text(size=font_1, family = "Arial"), axis.title.y = element_text(size=font_1, family = "Arial"), 
+          legend.text = element_text(size=font_1, family = "Arial"), legend.title = element_text(size=font_1, family = "Arial"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank())
   g
-  ggsave(g, file=paste0("Figures/pca_", days[i], ".png"),width = 4, height = 4.5, dpi = 300)
+  ggsave(g, file=paste0("Figures/pca_", days[i], ".png"),width = 4.5, height = 5.5, dpi = 300)
 }
  
 
@@ -286,4 +298,117 @@ capture.output(mod_output, file = "Model-output/pca.csv")
 
 
 
+
+
+
+
+
+
+### PCA of entire dataset together
+
+
+dat_mod <- bind_rows(dat)
+
+#dat_mod <- dat_mod[,which(!duplicated(names(dat_mod)))]
+# dat_mod[,c(resp, preds)]
+new_names <- c("Priming", "Plastic-CO2", "DOC", "MBC", "NO3", "NH4", "pH", "C-acq", "LAP", "SOC", "TN")
+dat_mod0 <- dat_mod[,c(resp,preds)] %>%
+  rename_with(~new_names)
+dat_mod1 <- dat_mod[,c("Plastic...3","Nitrogen...4", "Day")] %>%
+  rename_with(~c("Plastic", "Nitrogen", "Day"))
+dat_mod <- cbind(dat_mod1, dat_mod0)
+dat_mod <- dat_mod[-which(dat_mod$Plastic=="NONE"),] 
+
+
+
+# correlation plot
+corr <- round(cor(dat_mod[,c(new_names)], ), 2)
+p.mat <- cor_pmat(dat_mod[,c(new_names)])  
+row.names(p.mat) <- p.mat$rowname
+p.mat <- p.mat %>% select(-rowname)
+p.mat <- as.data.frame(p.mat)
+rownames(p.mat) <- colnames(p.mat)
+
+pl <- ggcorrplot(corr, show.diag = F, p.mat = p.mat,lab=T, type="lower", insig="blank", lab_size = 2, lab_col="white") +
+  theme_minimal()+
+  #labs(x="", y="", title=paste0(lets[i], ") ", days[i])) +
+  scale_x_discrete(labels=dat_names[-1]) +
+  scale_y_discrete(labels=dat_names) +
+  theme(axis.text.x = element_text(angle = 305, hjust=0), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +  
+  scale_fill_gradient2(low = "red", high =  "blue", mid = "white", midpoint = 0)
+ggsave(pl, file=paste0("Figures/correlations_all.png"),width = 4.5, height = 4.5, dpi = 300)
+
+# another correlation plot
+png(file=paste0("Figures/correlations_all_2.png"),width = 5.5, height = 4.5, units="in",res = 300)
+pairs.panels(dat_mod[,c(new_names)],smooth = F,ellipses = F,lm = T,
+             gap=0, las=1,
+             bg = colplas[dat_mod$Plastic],
+             pch= 21)
+dev.off()
+
+# PCA
+df <- dat_mod[,c(new_names)]
+pca_res <- prcomp(df, scale. = TRUE)
+mod_output <- print(pca_res)  
+mod_output_full <- pca_res$x
+
+g <- autoplot(pca_res, data=dat_mod, 
+              colour="Plastic", 
+              loadings=T, loadings.color="blue",
+              loadings.label=T, loadings.label.color="blue",labelsize = 10,
+              frame = TRUE, frame.type = 'norm') +
+  scale_color_manual(values=colplas25) +
+  theme_bw() + theme(legend.position="bottom") + 
+  labs(title="All data") 
+g
+
+
+
+# Extract PC axes for plotting
+PCAvalues <- data.frame(Plastic = dat_mod$Plastic, Nitrogen = dat_mod$Nitrogen, Day = dat_mod$Day, pca_res$x)
+
+# Extract loadings of the variables
+PCAloadings <- data.frame(Variables = rownames(pca_res$rotation), pca_res$rotation)
+
+# Extract PC axes for plotting
+PCAaxes <- (summary(pca_res)$importance)
+
+PCAvalues$Day[which(is.na(PCAvalues$Day))] <- 30
+PCAvalues$Day <- as.factor(PCAvalues$Day)
+# Plot
+g <- ggplot(PCAvalues, aes(x = PC1, y = PC2)) +
+  geom_point(size = 4, color="black", aes(shape=Day,fill = Plastic, alpha=Nitrogen)) +
+  geom_segment(data = PCAloadings, aes(x = 0, y = 0, xend = (PC1*5),
+                                       yend = (PC2*5)), arrow = arrow(length = unit(1/2, "picas")),color = "black") +
+  # for labels on the positive x side
+  annotate("text", x = (PCAloadings$PC1[which(PCAloadings$PC1>0)]*5)*1.1, 
+           y = (PCAloadings$PC2[which(PCAloadings$PC1>0)]*5)*1.1, 
+           #angle=(PCAloadings$PC1[which(PCAloadings$PC1>0)] + PCAloadings$PC2[which(PCAloadings$PC1>0)])*50, 
+           hjust=0,
+           label = rownames(PCAloadings)[which(PCAloadings$PC1>0)], size=6) +
+  # for labels on the negative x side
+  annotate("text", x = (PCAloadings$PC1[which(PCAloadings$PC1<0)]*5)*1.01, 
+           y = (PCAloadings$PC2[which(PCAloadings$PC1<0)]*5)*1.01, 
+           #angle=(PCAloadings$PC1[which(PCAloadings$PC1<0)] + PCAloadings$PC2[which(PCAloadings$PC1<0)])*30, 
+           hjust=1,
+           label = rownames(PCAloadings)[which(PCAloadings$PC1<0)], size=6) +
+  scale_fill_manual(values=colplas25) +
+  scale_shape_manual(values=c(21:24)) +
+  scale_alpha_manual(values=c(0.3,0.8)) +
+  theme_bw() +
+  guides(fill = guide_legend(override.aes = list(shape = 21))) + #color = guide_legend(nrow = 2), shape = guide_legend(nrow = 2)) +
+  labs(x=paste0("PC1 (", round(PCAaxes[2,1]*100, 1), "%)"), 
+       y=paste0("PC2 (", round(PCAaxes[2,2]*100, 1), "%)"), 
+       shape="Day") +
+  xlim(c(-3,5)) + ylim(c(-3,5)) +
+  theme(legend.position="right",title = element_text(size=font_1, family = "Arial"),
+        axis.text.x = element_text(size=font_1, family = "Arial"), axis.text.y = element_text(size=font_1, family = "Arial"), 
+        axis.title.x = element_text(size=font_1, family = "Arial"), axis.title.y = element_text(size=font_1, family = "Arial"), 
+        legend.text = element_text(size=font_1, family = "Arial"), legend.title = element_text(size=font_1, family = "Arial"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+g
+ggsave(g, file=paste0("Figures/pca_all data.png"),width = 9, height = 7, dpi = 300)
+
+capture.output(mod_output, file = "Model-output/pca_full.csv") 
 

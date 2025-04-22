@@ -49,6 +49,26 @@ dat_CO2 <- dat_CO2 %>%
   mutate(Nitrogen = factor(Nitrogen,levels = c("N0", "N1")))%>%
   mutate(Rep = factor(Rep))
 
+# standardize cumulative, plastic-derived, and SOM-derived CO2 emissions by plastic-C added
+og_c <- data <- read_excel("Raw-data/Microplastic_incubation_CO2_data_5-6-2023_a.xlsx", 
+                           sheet='13C and CN of plastics', range="Q77:U82")
+dat_CO2$original_c <- rep(NA, dim(dat_CO2)[1])
+for(i in 1:dim(dat_CO2)[1]){
+  dat_CO2$c_added[i] <- og_c$`mg plastic-C added per gdw soil`[which(og_c$plastic==dat_CO2$Plastic[i])]
+}
+dat_CO2$cumulative_CO2_std <- (dat_CO2$cumulative_CO2)/(dat_CO2$c_added*1000) # CO2-C emitted (ug g-1) / plastic-C added (ug g-1)
+dat_CO2$cumulative_CO2_std[which(dat_CO2$Plastic=="NONE")] <- NA
+dat_CO2$cumulative_CO2_plastic_std <- (dat_CO2$cumulative_CO2_plastic)/(dat_CO2$c_added*1000) # plastic CO2-C emitted (ug g-1) / plastic-C added (ug g-1)
+dat_CO2$cumulative_CO2_plastic_std[which(dat_CO2$Plastic=="NONE")] <- NA
+dat_CO2$cumulative_CO2_native_std <- (dat_CO2$cumulative_CO2_native)/(dat_CO2$c_added*1000) # native CO2-C emitted (ug g-1) / plastic-C added (ug g-1)
+dat_CO2$cumulative_CO2_native_std[which(dat_CO2$Plastic=="NONE")] <- NA
+dat_CO2 %>% 
+  filter(day %in% c(5,15,30,193)) %>% 
+  group_by(Plastic, day) %>% 
+  summarise(mean = mean(cumulative_CO2_std, na.rm=T), 
+            mean_p = mean(cumulative_CO2_plastic_std, na.rm=T),
+            mean_n = mean(cumulative_CO2_native_std, na.rm=T))
+
 write.csv(dat_CO2, "Processed-data/dat_CO2.csv")
 
 # subset data by nitrogen treatment and day
@@ -63,7 +83,8 @@ resp_CO2 <- c("cumulative_CO2", "daily_CO2",
               "cumulative_CO2_plastic", "daily_CO2_plastic",
               "cumulative_CO2_native", "daily_CO2_native",
               "cumulative_priming", "priming",
-              "cumulative_priming_relative", "priming_relative")
+              "cumulative_priming_relative", "priming_relative",
+              "cumulative_CO2_std", "cumulative_CO2_plastic_std", "cumulative_CO2_native_std")
 
 
 ### Soil data
@@ -85,6 +106,19 @@ dat_soil <- dat_soil %>%
   mutate(Nitrogen = factor(Nitrogen,levels = c("N0", "N1")))%>%
   mutate(Rep = factor(Rep))
 
+# standardize SOC by plastic-C added
+og_c <- data <- read_excel("Raw-data/Microplastic_incubation_CO2_data_5-6-2023_a.xlsx", 
+                           sheet='13C and CN of plastics', range="Q77:U82")
+dat_soil$original_c <- rep(NA, dim(dat_soil)[1])
+for(i in 1:dim(dat_soil)[1]){
+  dat_soil$c_added[i] <- og_c$`mg plastic-C added per gdw soil`[which(og_c$plastic==dat_soil$Plastic[i])]
+}
+dat_soil$SOC_std <- (dat_soil$SOC*10)/dat_soil$c_added # SOC / plastic-C added
+dat_soil$SOC_std[which(dat_soil$Plastic=="NONE")] <- NA
+dat_soil %>% 
+  group_by(Plastic, Time1) %>% 
+  summarise(mean = mean(SOC_std, na.rm=T))
+
 write.csv(dat_soil, "Processed-data/dat_soil.csv")
 
 # subset data by nitrogen treatment and day
@@ -95,7 +129,7 @@ dat_soil_193 <- subset(dat_soil, day==193)
 
 dat_soil_list <- list("dat_soil_5"=dat_soil_5, "dat_soil_15"=dat_soil_15,
                      "dat_soil_30"=dat_soil_30, "dat_soil_193"=dat_soil_193)
-resp_soil <- c("SOC", "TN", "MBC", "DOC", "cacq", "LAP", "Ammonium", "Nitrate", "pH")
+resp_soil <- c("SOC",  "TN", "MBC", "DOC", "cacq", "LAP", "Ammonium", "Nitrate", "pH", "SOC_std")
 
 
 
