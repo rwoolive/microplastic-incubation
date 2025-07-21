@@ -440,18 +440,19 @@ ggsave(p, file="Figures/CO2-cumulative-bars-average-sd_plastic-c-mineralized.png
 
 
 #### Bar plot for cumulative proportion of plastic c mineralized by plastic type and nitrogen level with sd
-p <- ggplot(cumulative_avg_last, aes(x = Plastic, y = mean_CO2_plastic_prop, fill = Plastic, alpha=Nitrogen)) +
+p <- ggplot(cumulative_avg_last, aes(x = Plastic, y = mean_CO2_plastic_prop*100, fill = Plastic, alpha=Nitrogen)) +
   theme_bw() + theme( panel.grid.major = element_blank(), text = element_text(size=font_1, family = "Arial"),# panel.border = element_rect(colour = "black"),
                       panel.grid.minor = element_blank(), #axis.line = element_line(colour = "black"),
                       axis.text.x = element_text(size=font_1, family = "Arial"), axis.text.y = element_text(size=font_1, family = "Arial"), 
                       axis.title.x = element_text(size=font_1, family = "Arial"), axis.title.y = element_text(size=font_1, family = "Arial"), 
                       legend.text = element_text(size=font_1, family = "Arial"), legend.title = element_text(size=font_1, family = "Arial")) +
+#  geom_bar(stat = "identity", position = position_dodge(width = 0.9), size=0.2) +
   geom_bar(stat = "identity", position = position_dodge(width = 0.9), size=0.2) +
-  geom_errorbar(aes(ymin = mean_CO2_plastic_prop - sd_CO2_plastic_prop,ymax = mean_CO2_plastic_prop + sd_CO2_plastic_prop), 
+  geom_errorbar(aes(ymin = 100*(mean_CO2_plastic_prop - sd_CO2_plastic_prop),ymax = 100*(mean_CO2_plastic_prop + sd_CO2_plastic_prop)), 
                 position = position_dodge(width = 0.9), size=0.4, width = 0.25) +
   scale_fill_manual(values = colplas) + 
   scale_alpha_manual(values = alphanit) + 
-  labs(x = "Plastic", y = bquote("Proportion of plastic-C mineralized"), tag = "A") 
+  labs(x = "Plastic", y = bquote("Plastic-C mineralized (%)"), tag = "A") 
 p
 
 ggsave(p, file="Figures/CO2-cumulative-bars-average-sd_plastic-c.png",width = 8, height = 5, dpi = 300)
@@ -485,18 +486,18 @@ ggsave(p, file="Figures/CO2-cumulative-bars-average-sd_soil-c-mineralized.png",w
 
 
 #### Bar plot for cumulative proportion of SOM-c mineralized in soil by plastic type and nitrogen level with sd
-p <- ggplot(cumulative_avg_last, aes(x = Plastic, y = mean_CO2_native_prop, fill = Plastic, alpha=Nitrogen)) +
+p <- ggplot(cumulative_avg_last, aes(x = Plastic, y = mean_CO2_native_prop*100, fill = Plastic, alpha=Nitrogen)) +
   theme_bw() + theme( panel.grid.major = element_blank(), text = element_text(size=font_1, family = "Arial"),# panel.border = element_rect(colour = "black"),
                           panel.grid.minor = element_blank(), #axis.line = element_line(colour = "black"),
                           axis.text.x = element_text(size=font_1, family = "Arial"), axis.text.y = element_text(size=font_1, family = "Arial"), 
                           axis.title.x = element_text(size=font_1, family = "Arial"), axis.title.y = element_text(size=font_1, family = "Arial"), 
                           legend.text = element_text(size=font_1, family = "Arial"), legend.title = element_text(size=font_1, family = "Arial")) +
   geom_bar(stat = "identity", position = position_dodge(width = 0.9), size=0.2) +
-  geom_errorbar(aes(ymin = mean_CO2_native_prop - sd_CO2_native_prop,ymax = mean_CO2_native_prop + sd_CO2_native_prop), 
+  geom_errorbar(aes(ymin = 100*(mean_CO2_native_prop - sd_CO2_native_prop),ymax = 100*(mean_CO2_native_prop + sd_CO2_native_prop)), 
                 position = position_dodge(width = 0.9), size=0.4, width = 0.25) +
   scale_fill_manual(values = colplas) + 
   scale_alpha_manual(values = alphanit) + 
-  labs(x = "Plastic", y = bquote("Proportion of SOM-C mineralized"), tag = "B") 
+  labs(x = "Plastic", y = bquote("SOM-C mineralized (%)"), tag = "B") 
  p
 
 ggsave(p, file="Figures/CO2-cumulative-bars-average-sd_soil-c-mineralized.png",width = 8, height = 5, dpi = 300)
